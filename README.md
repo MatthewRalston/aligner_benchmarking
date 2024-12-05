@@ -12,6 +12,40 @@ If you want to look at GNU time results for `exit` code and `real` seconds elaps
 The primary KPI are statistics like alignment rates, mate orientation, and proper pairing, which will in the future be diagnosed with `samtools` and `Picard`. For the time being, bare with me as the project develops.
 
 
+## Github checkout
+
+Checkout the benchmarking script and conda environment with `git`
+
+```bash
+git clone https://github.com/MatthewRalston/aligner_benchmarking.git
+```
+
+## `conda` environment
+
+Runs with a Miniconda environment: `miniconda3-3.12-24.9.2-0` 
+
+On my system, I've installed this with `.pyenv`. I don't use `pipenv` when using miniconda environments.
+
+Install to your compatible conda environment as follows:
+
+
+```bash
+conda create -n benchmark --file environment.yml
+
+```
+
+## Usage
+
+
+```bash
+./benchmark_aligners.sh --help
+```
+
+## Quarto/Rmd and benchmarking
+
+[TODO]
+
+
 
 # What is the rest of this garbage?
 
