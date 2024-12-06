@@ -30,11 +30,11 @@ dependencies:
   - c-ares=1.19.1=h5eee18b_0
   - ca-certificates=2024.11.26=h06a4308_0
   - cairo=1.16.0=ha61ee94_1014
-  - certifi=2024.8.30=pyhd8ed1ab_0
+  - certifi=2024.8.30=py312h06a4308_0
   - cffi=1.17.1=py312h1fdaa30_0
   - charset-normalizer=3.3.2=pyhd3eb1b0_0
   - chrpath=0.16=h7f98852_1002
-  - conda=24.11.0=py312h7900ff3_0
+  - conda=24.11.0=py312h06a4308_0
   - conda-content-trust=0.2.0=py312h06a4308_1
   - conda-libmamba-solver=24.9.0=pyhd3eb1b0_0
   - conda-package-handling=2.3.0=py312h06a4308_0
@@ -201,6 +201,7 @@ dependencies:
   - truststore=0.8.0=py312h06a4308_0
   - tzdata=2024b=h04d1e81_0
   - urllib3=2.2.3=py312h06a4308_0
+  - wgsim=1.0=he4a0461_7
   - wheel=0.44.0=py312h06a4308_0
   - xcb-util=0.4.0=h516909a_0
   - xcb-util-image=0.4.0=h166bdaf_0
