@@ -18,6 +18,7 @@ dependencies:
   - atk-1.0=2.38.0=hd4edc92_1
   - attr=2.5.1=h166bdaf_1
   - bbmap=39.01=h92535d8_1
+  - bedtools=2.31.1=hf5e1c6e_2
   - binutils=2.25.1=1
   - bison=3.7.5=h2531618_1
   - boltons=23.0.0=py312h06a4308_0
@@ -40,6 +41,7 @@ dependencies:
   - conda-package-handling=2.3.0=py312h06a4308_0
   - conda-package-streaming=0.10.0=py312h06a4308_0
   - cryptography=43.0.0=py312hdda0065_0
+  - curl=8.9.1=hdbd6064_0
   - dbus=1.13.6=h5008d03_3
   - distro=1.9.0=py312h06a4308_0
   - expat=2.6.3=h6a678d5_0
@@ -58,7 +60,7 @@ dependencies:
   - freetype=2.12.1=h267a509_2
   - fribidi=1.0.10=h36c2ea0_0
   - frozendict=2.4.2=py312h06a4308_0
-  - gdk-pixbuf=2.42.6=h04a7f16_0
+  - gdk-pixbuf=2.42.10=h5eee18b_1
   - gettext=0.22.5=he02047a_3
   - gettext-tools=0.22.5=he02047a_3
   - giflib=5.2.2=hd590300_0
@@ -73,7 +75,7 @@ dependencies:
   - gstreamer-orc=0.4.40=hb9d3cd8_0
   - gtk2=2.24.33=h90689f9_2
   - harfbuzz=6.0.0=h8e241bc_0
-  - htslib=1.18=h81da01d_0
+  - htslib=1.3.1=h0cf4675_7
   - icu=70.1=h27087fc_0
   - idna=3.7=py312h06a4308_0
   - jack=1.9.22=h11f4161_0
@@ -82,8 +84,9 @@ dependencies:
   - jsonpointer=2.1=pyhd3eb1b0_0
   - krb5=1.20.1=h143b758_1
   - lame=3.100=h166bdaf_1003
-  - lcms2=2.12=hddcbb42_0
+  - lcms2=2.15=hfd0df8a_0
   - ld_impl_linux-64=2.40=h12ee557_0
+  - lerc=3.0=h295c915_0
   - libarchive=3.6.2=h6ac8c49_2
   - libasprintf=0.22.5=he8f35ee_3
   - libasprintf-devel=0.22.5=he8f35ee_3
@@ -95,7 +98,7 @@ dependencies:
   - libcups=2.3.3=h36d4200_3
   - libcurl=8.9.1=h251f7ec_0
   - libdb=6.2.32=h9c3ff4c_0
-  - libdeflate=1.21=h4bc722e_0
+  - libdeflate=1.17=h5eee18b_1
   - libedit=3.1.20230828=h5eee18b_0
   - libev=4.33=h7f8727e_1
   - libevent=2.1.10=h28343ad_4
@@ -137,7 +140,7 @@ dependencies:
   - libstdcxx=14.2.0=hc0a3c3a_1
   - libstdcxx-ng=14.2.0=h4852527_1
   - libsystemd0=253=h8c4010b_1
-  - libtiff=4.2.0=hf544144_3
+  - libtiff=4.5.1=h6a678d5_0
   - libtool=2.4.7=he02047a_1
   - libudev1=253=h0b41bf4_1
   - libuuid=2.38.1=h0b41bf4_0
@@ -158,7 +161,7 @@ dependencies:
   - ncurses=6.5=he02047a_1
   - nspr=4.36=h5888daf_0
   - nss=3.100=hca3bf56_0
-  - openjdk=11.0.1=h516909a_1016
+  - openjdk=17.0.3=h58dac75_5
   - openssl=3.1.7=hb9d3cd8_0
   - packaging=24.1=py312h06a4308_0
   - pango=1.50.14=hd33c08f_0
@@ -170,6 +173,7 @@ dependencies:
   - perl-gdgraph-histogram=1.1=pl5321hdfd78af_4
   - perl-gdtextutil=0.86=pl5321h031d066_8
   - perl-perlio-gzip=0.20=pl5321he4a0461_6
+  - picard-slim=3.3.0=hdfd78af_0
   - pip=24.2=py312h06a4308_0
   - pixman=0.43.2=h59595ed_0
   - platformdirs=3.10.0=py312h06a4308_0
@@ -191,7 +195,7 @@ dependencies:
   - requests=2.32.3=py312h06a4308_0
   - ruamel.yaml=0.18.6=py312h5eee18b_0
   - ruamel.yaml.clib=0.2.8=py312h5eee18b_0
-  - samtools=1.18=h50ea8bc_1
+  - samtools=1.6=hc3601fc_10
   - setuptools=75.1.0=py312h06a4308_0
   - shrimp=2.2.3=1
   - sqlite=3.45.3=h5eee18b_0
