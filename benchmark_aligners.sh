@@ -31,9 +31,10 @@ export PATH=$PATH:$HOME/.pyenv/versions/miniconda3-3.12-24.9.2-0/bin
 
 ART_ILLUMINA=/ffast/source_files/art_bin_MountRainier/art_illumina
 
-export TMPDIR=/ffast/scratch
+
 FASTA=
 GTF=
+
 ORIGINAL_WORKDIR=$(pwd)
 
 # gmapper = SHRiMP
@@ -131,26 +132,45 @@ base_filename="${fasta%\.$suffix}"
 #####################################
 
 make_project_directory () {
+    local -n project_dir=$1
+    fasta=$2
+    gtf=$3
+    
     TMPDIR=$(mktemp --tmpdir=$TMPDIR -d aligner_benchmarking_temporary_directory.XXXXXX)
     full_fasta_filepath="$(readlink -f $fasta)"
     fasta_abs_dirpath="${full_fasta_filepath%/*}"
     fasta_filename="$(basename $full_fasta_filepath)"
-    ln -s $fasta_abs_dirpath/$fasta_filename $TMPDIR/
-    FASTA=$fasta_filename
+
+    full_gtf_filepath="$(readlink -f $gtf)"
+    gtf_abs_dirpath="${full_gtf_filepath%/*}"
+    gtf_filename="$(basename $full_gtf_filepath)"
+    
+    cp $fasta_abs_dirpath/$fasta_filename $TMPDIR/
+    FASTA=$TMPDIR/$fasta_filename
+
+    cp $gtf_abs_dirpath/$gtf_filename $TMPDIR/
+    GTF=$TMPDIR/$gtf_filename
+
+    
     cd $TMPDIR
     echo "Benchmarking aligners in temporary project directory '$(pwd)'" 1>&2;
+
+    project_dir=($TMPDIR $FASTA $GTF)
+    
 }
 
 clean_project_directory() {
     echo 1>&2
     echo 1>&2
     echo 1>&2
-    for f in $(/bin/ls *.fastq);
+    echo "Compressing fastq files from $TMPDIR..." 1>&2
+    for f in $(/bin/ls $TMPDIR/*.fq);
     do
 	gzip $f
     done
-    rm *.sam
-    rm *.cleaned.bam *.marked.bam
+    echo "Removing old samfiles from $TMPDIR..." 1>&2
+    rm $TMPDIR/*.sam
+    rm $TMPDIR/*.cleaned.bam
     echo 1>&2
     echo 1>&2
     echo 1>&2
@@ -173,10 +193,19 @@ print_project_directory_and_exit() {
 }
 
 generate_reads() {
-    $ART_ILLUMINA -ss HS25 -i $fasta -p -qL 30 -l 150 -f 50 -m 200 -s 10 -o "${base_filename}_"
+    fasta=$1
+    echo 1>&2
+    echo 1>&2
+    echo 1>&2
+    echo "Generating reads with ART Illumina from fasta file '$fasta'..." 1>&2
+    echo 1>&2
+    echo 1>&2
+    echo 1>&2
+
+    $ART_ILLUMINA -ss HS25 -i $fasta -p -qL 30 -l 150 -f 50 -m 200 -s 10 -o "${fasta%.*}_"
     # Additionally combine reads into single fastq file.
     #wgsim -N 10000000 $FASTA ${FASTA%.*}_1.fq ${FASTA%.*}_2.fq
-    cat ${FASTA%.*}_1.fq ${FASTA%.*}_2.fq > ${base_filename}_reads.fq
+    cat ${fasta%.*}_1.fq ${fasta%.*}_2.fq > ${fasta%.*}_reads.fq
 
 }
 
@@ -198,7 +227,7 @@ evaluate_alignment() {
     picard CollectInsertSizeMetrics -I $samfile -H ${samfile%.*}.histogram.txt -O ${samfile%.*}.collectinsertsizemetrics.txt
     echo 1>&2
     echo 1>&2
-    echo "Running wgsim_eval"
+    echo "Finished running Picard metrics" 1>&2
     echo 1>&2
     echo 1>&2
 }
@@ -213,33 +242,42 @@ evaluate_alignment() {
 #####################################
 
 run_bowtie_build() {
+    fasta=$1
+    base_filename="${fasta%.*}"
+    
     # Generate a bowtie index
-    bowtie-build $FASTA $base_filename
+    bowtie-build $fasta $base_filename
 }
 
 run_bowtie2_build() {
+    fasta=$1
+    base_filename="${fasta%.*}"
+
     # Generate a bowtie2 index
-    bowtie2-build $FASTA $base_filename
+    bowtie2-build $fasta $base_filename
 }
 
 run_bbmap_index() {
+    fasta=$1
+
     # Generate a bbmap index
-    bbmap.sh ref=$FASTA
+    bbmap.sh ref=$fasta
 }
 
-run_gmap_index() {
-    # Generate a GMap/GSnap index
-    echo 1&>2
-    echo 1&>2
-    echo "Genome is '${FASTA%.*}'" 1&>2
-    echo "FASTA is '$FASTA'" 1&>2
-    echo "GTF is '$GTF'" 1&>2
-    echo 1&>2
-    echo 1&>2
-    gmap_make_ref.sh ${FASTA%.*} $FASTA $GTF
-    gmap_build --dir=$(pwd) --db=${FASTA%.*} ${FASTA%.*} $FASTA
-    #make gmapdb
-}
+## Literally unusable
+# run_gmap_index() {
+#     Generate a GMap/GSnap index
+#     echo 1&>2
+#     echo 1&>2
+#     echo "Genome is '${FASTA%.*}'" 1&>2
+#     echo "FASTA is '$FASTA'" 1&>2
+#     echo "GTF is '$GTF'" 1&>2
+#     echo 1&>2
+#     echo 1&>2
+#     gmap_make_ref.sh ${FASTA%.*} $FASTA $GTF
+#     gmap_build --dir=$(pwd) --db=${FASTA%.*} ${FASTA%.*} $FASTA
+#     make gmapdb
+# }
 
 
 
@@ -250,8 +288,12 @@ run_gmap_index() {
 
 #####################################
 run_bowtie() {
+    fasta=$1
+    base_filename="${fasta%.*}"
+
+    
     # Generate alignment
-    /usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie -p $cores ${base_filename} -1 ${FASTA%.*}_1.fq -2 ${FASTA%.*}_2.fq -S ${FASTA%.*}.bowtie.sam
+    /usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie -p $cores $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S ${base_filename}.bowtie.sam
     echo 1>&2
     echo 1>&2
     echo "Completed running bowtie..." 1>&2
@@ -262,8 +304,12 @@ run_bowtie() {
 }
 
 run_bowtie2() {
+    fasta=$1
+    base_filename="${fasta%.*}"
+
+
     # Run bowtie2
-    /usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 -p $cores -x $base_filename -1 ${FASTA%.*}_1.fq -2 ${FASTA%.*}_2.fq -S ${FASTA%.*}.bowtie2.sam
+    /usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 -p $cores -x $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S ${base_filename}.bowtie2.sam
     echo 1>&2
     echo 1>&2
     echo "Completed running bowtie2..." 1>&2
@@ -274,8 +320,11 @@ run_bowtie2() {
 }
 
 run_bbmap() {
+    fasta=$1
+    base_filename="${fasta%.*}"
+
     # Generate alignment
-    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh in=${FASTA%.*}_reads.fq threads=$cores out=${FASTA%.*}.bbmap.sam
+    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh in=${base_filename}_reads.fq threads=$cores out=${base_filename}.bbmap.sam
     echo 1>&2
     echo 1>&2
     echo "Completed running bbmap..." 1>&2
@@ -285,7 +334,11 @@ run_bbmap() {
 }
 
 run_shrimp() {
-    /usr/bin/time -a -o shrimp_timed.tsv -f "%x\t%e" gmapper -1 ${FASTA%.*}_1.fq -2 ${FASTA%.*}_2.fq $FASTA > ${FASTA%.*}.shrimp.sam
+    fasta=$1
+    base_filename="${fasta%.*}"
+
+    # Generate alignment
+    /usr/bin/time -a -o shrimp_timed.tsv -f "%x\t%e" gmapper -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq $fasta > ${base_filename}.shrimp.sam
     echo 1>&2
     echo 1>&2
     echo "Completed running SHRiMP..." 1>&2
@@ -294,15 +347,6 @@ run_shrimp() {
     echo "${FASTA%.*}.shrimp.sam"
 }
 
-run_gsnap() {
-    /usr/bin/time -a -o gsnap_timed.tsv -f "%x\t%e" gsnap -D=$(pwd) -d=${FASTA%.*} -t $cores --novelsplicing=0 --format=sam ${FASTA%.*}_reads.fq > ${FASTA%.*}.gsnap.sam
-    echo 1>&2
-    echo 1>&2
-    echo "Completed running GSnap..." 1>&2
-    echo 1>&2
-    echo 1>&2
-    echo "${FASTA%.*}.gsnap.sam"
-}
 
 
 
@@ -318,35 +362,53 @@ run_gsnap() {
 
 
 main_routine() {
-    make_project_directory
+    local arr
+    export TMPDIR=/ffast/scratch
 
+    # Make a project directory
+    make_project_directory arr $fasta $gtf
+
+    read TMPDIR FASTA GTF <<< "${arr[*]}"
+
+
+    
+    # echo 1>&2
+    # echo 1>&2
+    # echo "Project directory is '$TMPDIR'" 1>&2
+    # echo "Fasta file is '$FASTA'" 1>&2
+    # echo "GTF file is '$GTF'" 1>&2
+    # echo 1>&2
+    # echo 1>&2
+    
+    # exit 1
+    
     # Generate reads at 50x fold coverage, 150bp read length, 200bp insert size
-    generate_reads
+    generate_reads $FASTA
     # Index 
-    run_bowtie_build
-    run_bowtie2_build
-    run_bbmap_index
-    #run_gmap_index #Unusable. Repeated errors of 'unable to find genome directory x.'
+    run_bowtie_build $FASTA
+    run_bowtie2_build $FASTA
+    run_bbmap_index $FASTA
+    # #run_gmap_index #Unusable. Repeated errors of 'unable to find genome directory x.'
 
 
-    # Programs
-    bowtie_sam=$(run_bowtie)
-    bowtie2_sam=$(run_bowtie2)
-    bbmap_sam=$(run_bbmap)
-    shrimp_sam=$(run_shrimp)
-    #gsnap_sam=$(run_gsnap) # Unusable
+    # # Programs
+    bowtie_sam=$(run_bowtie $FASTA)
+    bowtie2_sam=$(run_bowtie2 $FASTA)
+    bbmap_sam=$(run_bbmap $FASTA)
+    shrimp_sam=$(run_shrimp $FASTA)
 
-    # Sort alignments
+
+    # # Sort alignments
     bowtie_sorted_bam=$(sort_alignment $bowtie_sam)
     bowtie2_sorted_bam=$(sort_alignment $bowtie2_sam)
     bbmap_sorted_bam=$(sort_alignment $bbmap_sam)
     shrimp_sorted_bam=$(sort_alignment $shrimp_sam)
 
     # Evaluate alignments
-    evaluate_alignment $bowtie_sorted_bam
-    evaluate_alignment $bowtie2_sorted_bam
-    evaluate_alignment $bbmap_sorted_bam
-    evaluate_alignment $shrimp_sorted_bam
+    # evaluate_alignment $bowtie_sorted_bam
+    # evaluate_alignment $bowtie2_sorted_bam
+    # evaluate_alignment $bbmap_sorted_bam
+    # evaluate_alignment $shrimp_sorted_bam
 
     # Cleanup
     clean_project_directory
@@ -354,7 +416,7 @@ main_routine() {
     print_project_directory_and_exit
 }
 
-for i in $(seq 1 10);
+for i in $(seq 1 $n);
 do
     main_routine
 done
