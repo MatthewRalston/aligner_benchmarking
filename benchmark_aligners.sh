@@ -29,13 +29,13 @@ VERSION=0.0.1
 export PATH=$PATH:$HOME/.pyenv/versions/miniconda3-3.12-24.9.2-0/bin
 
 
-ART_ILLUMINA=/ffast/source_files/art_bin_MountRainier/art_illumina
+export ART_ILLUMINA=/ffast/source_files/art_bin_MountRainier/art_illumina
 
 
 FASTA=
 GTF=
 
-ORIGINAL_WORKDIR=$(pwd)
+export ORIGINAL_WORKDIR=$(pwd)
 
 # gmapper = SHRiMP
 #ALIGNMENT_ROUTINES=(run_bowtie run_bowtie2 run_bbmap run_gmapper run_gsnap run_bwa_mem2 run_bwa_aln run_bwa_mem)
@@ -86,6 +86,8 @@ then
     echo "Exit code: $ecode"
     echo "Fasta sequence file does not have a .fasta or .fa file suffix. Possibly gzip/zlib compressed. Please provide a decompressed fasta file to continue." 1>&2;
     exit 1
+else
+    export fasta
 fi
 
 
@@ -93,6 +95,8 @@ if [ ! -f $gtf ];
 then
     echo "GTF File doesn't exist at provided path: '$gtf'" 1>&2
     exit 1
+else
+    export gtf
 fi
 
 # if [ ! -f $fastq ];
@@ -135,6 +139,7 @@ make_project_directory () {
     local -n project_dir=$1
     fasta=$2
     gtf=$3
+
     
     TMPDIR=$(mktemp --tmpdir=$TMPDIR -d aligner_benchmarking_temporary_directory.XXXXXX)
     full_fasta_filepath="$(readlink -f $fasta)"
@@ -156,7 +161,6 @@ make_project_directory () {
     echo "Benchmarking aligners in temporary project directory '$(pwd)'" 1>&2;
 
     project_dir=($TMPDIR $FASTA $GTF)
-    
 }
 
 clean_project_directory() {
@@ -169,7 +173,7 @@ clean_project_directory() {
 	gzip $f
     done
     echo "Removing old samfiles from $TMPDIR..." 1>&2
-    rm $TMPDIR/*.sam
+    #rm $TMPDIR/*.sam
     rm $TMPDIR/*.cleaned.bam
     echo 1>&2
     echo 1>&2
@@ -202,11 +206,11 @@ generate_reads() {
     echo 1>&2
     echo 1>&2
 
-    $ART_ILLUMINA -ss HS25 -i $fasta -p -qL 30 -l 150 -f 50 -m 200 -s 10 -o "${fasta%.*}_"
+    $ART_ILLUMINA -ss HS25 -i $fasta -p -qL 20 -l 150 -f 200 -m 200 -s 10 -o "${fasta%.*}_"
     # Additionally combine reads into single fastq file.
     #wgsim -N 10000000 $FASTA ${FASTA%.*}_1.fq ${FASTA%.*}_2.fq
     cat ${fasta%.*}_1.fq ${fasta%.*}_2.fq > ${fasta%.*}_reads.fq
-
+    rm *.aln
 }
 
 
@@ -293,14 +297,14 @@ run_bowtie() {
 
     
     # Generate alignment
-    /usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie -p $cores $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S ${base_filename}.bowtie.sam
+    /usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S ${base_filename}.bowtie.sam
     echo 1>&2
     echo 1>&2
     echo "Completed running bowtie..." 1>&2
     echo 1>&2
     echo 1>&2
     
-    echo "${FASTA%.*}.bowtie.sam"
+    echo "${fasta%.*}.bowtie.sam"
 }
 
 run_bowtie2() {
@@ -309,14 +313,14 @@ run_bowtie2() {
 
 
     # Run bowtie2
-    /usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 -p $cores -x $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S ${base_filename}.bowtie2.sam
+    /usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 $cores -x $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S ${base_filename}.bowtie2.sam
     echo 1>&2
     echo 1>&2
     echo "Completed running bowtie2..." 1>&2
     echo 1>&2
     echo 1>&2
 
-    echo "${FASTA%.*}.bowtie2.sam"
+    echo "${fasta%.*}.bowtie2.sam"
 }
 
 run_bbmap() {
@@ -324,13 +328,13 @@ run_bbmap() {
     base_filename="${fasta%.*}"
 
     # Generate alignment
-    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh in=${base_filename}_reads.fq threads=$cores out=${base_filename}.bbmap.sam
+    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh in=${base_filename}_1.fq in2=${base_filename}_2.fq out=${base_filename}.bbmap.sam
     echo 1>&2
     echo 1>&2
     echo "Completed running bbmap..." 1>&2
     echo 1>&2
     echo 1>&2
-    echo "${FASTA%.*}.bbmap.sam"
+    echo "${fasta%.*}.bbmap.sam"
 }
 
 run_shrimp() {
@@ -344,7 +348,7 @@ run_shrimp() {
     echo "Completed running SHRiMP..." 1>&2
     echo 1>&2
     echo 1>&2
-    echo "${FASTA%.*}.shrimp.sam"
+    echo "${fasta%.*}.shrimp.sam"
 }
 
 
@@ -382,9 +386,9 @@ main_routine() {
     
     # exit 1
     
-    # Generate reads at 50x fold coverage, 150bp read length, 200bp insert size
+    # # Generate reads at 50x fold coverage, 150bp read length, 200bp insert size
     generate_reads $FASTA
-    # Index 
+    # # Index 
     run_bowtie_build $FASTA
     run_bowtie2_build $FASTA
     run_bbmap_index $FASTA
@@ -398,17 +402,17 @@ main_routine() {
     shrimp_sam=$(run_shrimp $FASTA)
 
 
-    # # Sort alignments
+    # # # Sort alignments
     bowtie_sorted_bam=$(sort_alignment $bowtie_sam)
     bowtie2_sorted_bam=$(sort_alignment $bowtie2_sam)
     bbmap_sorted_bam=$(sort_alignment $bbmap_sam)
     shrimp_sorted_bam=$(sort_alignment $shrimp_sam)
 
     # Evaluate alignments
-    # evaluate_alignment $bowtie_sorted_bam
-    # evaluate_alignment $bowtie2_sorted_bam
-    # evaluate_alignment $bbmap_sorted_bam
-    # evaluate_alignment $shrimp_sorted_bam
+    evaluate_alignment $bowtie_sorted_bam
+    evaluate_alignment $bowtie2_sorted_bam
+    evaluate_alignment $bbmap_sorted_bam
+    evaluate_alignment $shrimp_sorted_bam
 
     # Cleanup
     clean_project_directory
@@ -416,7 +420,33 @@ main_routine() {
     print_project_directory_and_exit
 }
 
-for i in $(seq 1 $n);
-do
-    main_routine
-done
+###################
+# Export functions
+###################
+
+export -f main_routine
+# Prerequisites
+export -f make_project_directory
+export -f generate_reads
+# Build index
+export -f run_bowtie_build
+export -f run_bowtie2_build
+export -f run_bbmap_index
+# Aligners
+export -f run_bowtie
+export -f run_bowtie2
+export -f run_bbmap
+export -f run_shrimp
+# Sort alignments
+export -f sort_alignment
+# Alignment evaluation
+export -f evaluate_alignment
+# Clean directory
+export -f clean_project_directory
+export -f print_project_directory_and_exit
+# for i in $(seq 1 $n);
+# do
+#     main_routine
+# done
+
+parallel -j $cores 'main_routine' ::: $(seq 1 $n)
