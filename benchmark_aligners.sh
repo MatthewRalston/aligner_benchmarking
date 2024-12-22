@@ -77,7 +77,7 @@ then
     exit 1
 
 
-elif ! [ $(echo $fasta | grep -E '^*.fa$') ] && ! [ $(echo $fasta | grep -E '^*.fasta$') ];
+elif ! [ $(echo $fasta | grep -E '^*.fa$') ] && ! [ $(echo $fasta | grep -E '^*.fasta$') ] && ! [ $(echo $fasta | grep -E '^*.fna$') ];
 then
     echo $fasta
     echo $(echo $fasta | grep -E '^*.fasta$')
@@ -206,7 +206,7 @@ generate_reads() {
     echo 1>&2
     echo 1>&2
 
-    $ART_ILLUMINA -ss HS25 -i $fasta -p -qL 20 -l 150 -f 200 -m 200 -s 10 -o "${fasta%.*}_"
+    $ART_ILLUMINA -ss HS25 -i $fasta -p -na -qL 20 -l 150 -c 10000000 -ir 0.01 -ir2 0.01 -dr 0.01 -dr2 0.01 -m 200 -s 10 -o "${fasta%.*}_"
     # Additionally combine reads into single fastq file.
     #wgsim -N 10000000 $FASTA ${FASTA%.*}_1.fq ${FASTA%.*}_2.fq
     cat ${fasta%.*}_1.fq ${fasta%.*}_2.fq > ${fasta%.*}_reads.fq
@@ -244,6 +244,21 @@ evaluate_alignment() {
 #      I n d e x i n g
 
 #####################################
+
+run_bwa_index(){
+    fasta=$1
+    base_filename="${fasta%.*}"
+    # Generate a bwa-mem index
+    bwa index $fasta -p $base_filename
+}
+
+run_bwa_mem2_index(){
+    fasta=$1
+    base_filename="${fasta%.*}"
+
+    # Generate a bwa-mem2 index
+    bwa-mem2 index -p $base_filename $fasta
+}
 
 run_bowtie_build() {
     fasta=$1
@@ -291,6 +306,35 @@ run_bbmap_index() {
 #      B e n c h m a r k i n g
 
 #####################################
+run_bwa_mem() {
+    fasta=$1
+    base_filename="${fasta%,*}"
+    /usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa mem -u -o ${base_filename}.bwa.sam $base_filename ${base_filename}_1.fq ${base_filename}_2.fq
+    echo 1>&2
+    echo 1>&2
+    echo "Completed running bwa..." 1>&2
+    echo 1>&2
+    echo 1>&2
+    
+    echo "${base_filename}.bwa.sam"
+    
+}
+
+run_bwa_mem2() {
+    fasta=$1
+    base_filename="${fasta%,*}"
+    /usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa-mem2 mem -o ${base_filename}.bwa.sam $base_filename ${base_filename}_1.fq ${base_filename}_2.fq
+    echo 1>&2
+    echo 1>&2
+    echo "Completed running bwa..." 1>&2
+    echo 1>&2
+    echo 1>&2
+    
+    echo "${base_filename}.bwa.sam"
+    
+}
+
+
 run_bowtie() {
     fasta=$1
     base_filename="${fasta%.*}"
@@ -328,7 +372,7 @@ run_bbmap() {
     base_filename="${fasta%.*}"
 
     # Generate alignment
-    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh in=${base_filename}_1.fq in2=${base_filename}_2.fq out=${base_filename}.bbmap.sam
+    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh ref=$fasta in=${base_filename}_1.fq in2=${base_filename}_2.fq out=${base_filename}.bbmap.sam
     echo 1>&2
     echo 1>&2
     echo "Completed running bbmap..." 1>&2
@@ -388,7 +432,9 @@ main_routine() {
     
     # # Generate reads at 50x fold coverage, 150bp read length, 200bp insert size
     generate_reads $FASTA
-    # # Index 
+    # # Index
+    run_bwa_index $FASTA
+    run_bwa_mem2_index $FASTA
     run_bowtie_build $FASTA
     run_bowtie2_build $FASTA
     run_bbmap_index $FASTA
@@ -396,6 +442,8 @@ main_routine() {
 
 
     # # Programs
+    bwa_mem_sam=$(run_bwa_mem $FASTA)
+    bwa_mem2_sam=$(run_bwa_mem2 $FASTA)
     bowtie_sam=$(run_bowtie $FASTA)
     bowtie2_sam=$(run_bowtie2 $FASTA)
     bbmap_sam=$(run_bbmap $FASTA)
@@ -403,12 +451,16 @@ main_routine() {
 
 
     # # # Sort alignments
+    bwa_mem_sorted_bam=$(sort_alignment $bwa_mem_sam)
+    bwa2_mem_sam=$(sort_alignment $bwa_mem2_sam)
     bowtie_sorted_bam=$(sort_alignment $bowtie_sam)
     bowtie2_sorted_bam=$(sort_alignment $bowtie2_sam)
     bbmap_sorted_bam=$(sort_alignment $bbmap_sam)
     shrimp_sorted_bam=$(sort_alignment $shrimp_sam)
 
     # Evaluate alignments
+    evaluate_alignment $bwa_mem_sorted_bam
+    evaluate_alignment $bwa_mem2_sorted_bam
     evaluate_alignment $bowtie_sorted_bam
     evaluate_alignment $bowtie2_sorted_bam
     evaluate_alignment $bbmap_sorted_bam
@@ -429,10 +481,14 @@ export -f main_routine
 export -f make_project_directory
 export -f generate_reads
 # Build index
+export -f run_bwa_mem_index
+export -f run_bwa_mem2_index
 export -f run_bowtie_build
 export -f run_bowtie2_build
 export -f run_bbmap_index
 # Aligners
+export -f run_bwa_mem
+export -f run_bwa_mem2
 export -f run_bowtie
 export -f run_bowtie2
 export -f run_bbmap
