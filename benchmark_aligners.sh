@@ -225,6 +225,10 @@ sort_alignment() {
     echo 1>&2
     
     output_bam="${samfile%.*}.sorted.bam"
+
+
+
+    
     picard CleanSam -I $samfile -O "${samfile%.*}.cleaned.bam"
     #picard MarkDuplicates -I ${samfile%.*}.cleaned.bam -M ${samfile%.*}.markduplicates_metrics.txt -O ${samfile%.*}.marked.bam
     picard SortSam -I "${samfile%.*}.cleaned.bam" -O $output_bam --SORT_ORDER coordinate
@@ -243,16 +247,16 @@ sort_alignment() {
 
 evaluate_alignment() {
     bamfile=$1
-    gtf=$2
+    #gtf=$2
     echo "==============================================" 1>&2
     echo 1>&2
     echo 1>&2
-    echo "Evaluating alignment file ${samfile}..." 1>&2
+    echo "Evaluating alignment file ${bamfile}..." 1>&2
     echo 1>&2
     echo 1>&2
     echo "==============================================" 1>&2
-    picard CollectAlignmentSummaryMetrics -I $bamfile -O ${samfile%.*}.collectalignmentsummarymetrics.txt
-    picard CollectInsertSizeMetrics -I $bamfile -H ${samfile%.*}.histogram.txt -O ${samfile%.*}.collectinsertsizemetrics.txt
+    picard CollectAlignmentSummaryMetrics -I $bamfile -O ${bamfile%.*}.collectalignmentsummarymetrics.txt
+    picard CollectInsertSizeMetrics -I $bamfile -H ${bamfile%.*}.histogram.txt -O ${bamfile%.*}.collectinsertsizemetrics.txt
     echo 1>&2
     echo 1>&2
     echo "Finished running Picard metrics" 1>&2
@@ -333,28 +337,33 @@ run_bbmap_index() {
 run_bwa_mem() {
     fasta=$1
     base_filename="${fasta%.*}"
-    /usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa mem -u -o ${base_filename}.bwa.sam $base_filename ${base_filename}_1.fq ${base_filename}_2.fq
+    output_bam="${base_filename}.bwa.sam"
+
+    
+    /usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa mem -u -o $output_bam $base_filename ${base_filename}_1.fq ${base_filename}_2.fq
     echo 1>&2
     echo 1>&2
     echo "Completed running bwa..." 1>&2
     echo 1>&2
     echo 1>&2
     
-    echo "${base_filename}.bwa.sam"
+    echo $output_bam
     
 }
 
 run_bwa_mem2() {
     fasta=$1
     base_filename="${fasta%.*}"
-    /usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa-mem2 mem -o ${base_filename}.bwa2.sam $base_filename ${base_filename}_1.fq ${base_filename}_2.fq
+    output_bam="${base_filename}.bwa2.sam"
+    
+    /usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa-mem2 mem -o $output_bam $base_filename ${base_filename}_1.fq ${base_filename}_2.fq
     echo 1>&2
     echo 1>&2
     echo "Completed running bwa2..." 1>&2
     echo 1>&2
     echo 1>&2
     
-    echo "${base_filename}.bwa2.sam"
+    echo $output_bam
     
 }
 
@@ -362,61 +371,72 @@ run_bwa_mem2() {
 run_bowtie() {
     fasta=$1
     base_filename="${fasta%.*}"
-
+    output_bam="${fasta%.*}.bowtie.sam"
     
     # Generate alignment
-    /usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S ${base_filename}.bowtie.sam
+    /usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S $output_bam
     echo 1>&2
     echo 1>&2
     echo "Completed running bowtie..." 1>&2
     echo 1>&2
     echo 1>&2
     
-    echo "${fasta%.*}.bowtie.sam"
+    echo 
 }
 
 run_bowtie2() {
     fasta=$1
     base_filename="${fasta%.*}"
-
+    output_bam="${base_filename}.bowtie2.sam"
 
     # Run bowtie2
-    /usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 $cores -x $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S ${base_filename}.bowtie2.sam
+    /usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 $cores -x $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S $output_bam
     echo 1>&2
     echo 1>&2
     echo "Completed running bowtie2..." 1>&2
     echo 1>&2
     echo 1>&2
 
-    echo "${fasta%.*}.bowtie2.sam"
+    echo $output_bam
 }
 
 run_bbmap() {
     fasta=$1
     base_filename="${fasta%.*}"
 
+
+    output_bam="${base_filename}.bbmap.sam"
+    
     # Generate alignment
-    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh ref=$fasta in=${base_filename}_1.fq in2=${base_filename}_2.fq out=${base_filename}.bbmap.sam
+    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh ref=$fasta in=${base_filename}_1.fq in2=${base_filename}_2.fq out=$output_bam
     echo 1>&2
     echo 1>&2
     echo "Completed running bbmap..." 1>&2
     echo 1>&2
     echo 1>&2
-    echo "${fasta%.*}.bbmap.sam"
+
+
+    
+    echo $output_bam
 }
 
 run_shrimp() {
     fasta=$1
     base_filename="${fasta%.*}"
 
+    output_bam="${base_filename}.shrimp.sam"
+    
     # Generate alignment
-    /usr/bin/time -a -o shrimp_timed.tsv -f "%x\t%e" gmapper -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq $fasta > ${base_filename}.shrimp.sam
+    /usr/bin/time -a -o shrimp_timed.tsv -f "%x\t%e" gmapper -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq $fasta > $output_bam
     echo 1>&2
     echo 1>&2
     echo "Completed running SHRiMP..." 1>&2
     echo 1>&2
     echo 1>&2
-    echo "${fasta%.*}.shrimp.sam"
+
+
+    
+    echo $output_bam
 }
 
 
@@ -457,7 +477,7 @@ main_routine() {
     # # Generate reads at 50x fold coverage, 150bp read length, 200bp insert size
     generate_reads $FASTA
     # # Index
-    #run_bwa_index $FASTA # Not working properly
+    run_bwa_index $FASTA # Not working properly
     run_bwa_mem2_index $FASTA
     run_bowtie_build $FASTA
     run_bowtie2_build $FASTA
@@ -466,7 +486,7 @@ main_routine() {
 
 
     # # Programs
-    # bwa_mem_sam=$(run_bwa_mem $FASTA)
+    bwa_mem_sam=$(run_bwa_mem $FASTA)
     bwa_mem2_sam=$(run_bwa_mem2 $FASTA)
     bowtie_sam=$(run_bowtie $FASTA)
     bowtie2_sam=$(run_bowtie2 $FASTA)
@@ -475,7 +495,7 @@ main_routine() {
 
 
     # # # Sort alignments
-    # bwa_mem_sorted_bam=$(sort_alignment $bwa_mem_sam)
+    bwa_mem_sorted_bam=$(sort_alignment $bwa_mem_sam)
     bwa_mem2_sorted_bam=$(sort_alignment $bwa_mem2_sam)
     bowtie_sorted_bam=$(sort_alignment $bowtie_sam)
     bowtie2_sorted_bam=$(sort_alignment $bowtie2_sam)
@@ -484,12 +504,12 @@ main_routine() {
 
 
     # Evaluate alignments
-    # evaluate_alignment $bwa_mem_sorted_bam $GTF
+    evaluate_alignment $bwa_mem_sorted_bam $GTF
     evaluate_alignment $bwa_mem2_sorted_bam $GTF
     evaluate_alignment $bowtie_sorted_bam $GTF
     evaluate_alignment $bowtie2_sorted_bam $GTF
     evaluate_alignment $bbmap_sorted_bam $GTF
-    evaluate_alignment $shrimp_sorted_bam $GTF
+    #evaluate_alignment $shrimp_sorted_bam $GTF
 
     # Cleanup
     clean_project_directory
