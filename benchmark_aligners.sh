@@ -487,10 +487,10 @@ main_routine() {
 
     # # Programs
     bwa_mem_sam=$(run_bwa_mem $FASTA)
-    #bwa_mem2_sam=$(run_bwa_mem2 $FASTA)
+    bwa_mem2_sam=$(run_bwa_mem2 $FASTA)
     bowtie_sam=$(run_bowtie $FASTA)
-    #bowtie2_sam=$(run_bowtie2 $FASTA)
-    #bbmap_sam=$(run_bbmap $FASTA)
+    bowtie2_sam=$(run_bowtie2 $FASTA)
+    bbmap_sam=$(run_bbmap $FASTA)
     # shrimp_sam=$(run_shrimp $FASTA)
 
 
@@ -504,12 +504,12 @@ main_routine() {
 
 
     # Evaluate alignments
-    evaluate_alignment $bwa_mem_sorted_bam $GTF
-    #evaluate_alignment $bwa_mem2_sorted_bam $GTF
-    evaluate_alignment $bowtie_sorted_bam $GTF
-    #evaluate_alignment $bowtie2_sorted_bam $GTF
-    #evaluate_alignment $bbmap_sorted_bam $GTF
-    #evaluate_alignment $shrimp_sorted_bam $GTF
+    evaluate_alignment $bwa_mem_sorted_bam
+    evaluate_alignment $bwa_mem2_sorted_bam
+    evaluate_alignment $bowtie_sorted_bam
+    evaluate_alignment $bowtie2_sorted_bam
+    evaluate_alignment $bbmap_sorted_bam
+    #evaluate_alignment $shrimp_sorted_bam
 
     # Cleanup
     clean_project_directory
