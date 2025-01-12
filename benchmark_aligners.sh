@@ -371,7 +371,7 @@ run_bwa_mem2() {
 run_bowtie() {
     fasta=$1
     base_filename="${fasta%.*}"
-    output_bam="${fasta%.*}.bowtie.sam"
+    output_bam="${base_filename}.bowtie.sam"
     
     # Generate alignment
     /usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S $output_bam
@@ -381,7 +381,7 @@ run_bowtie() {
     echo 1>&2
     echo 1>&2
     
-    echo 
+    echo $output_bam
 }
 
 run_bowtie2() {
@@ -487,28 +487,28 @@ main_routine() {
 
     # # Programs
     bwa_mem_sam=$(run_bwa_mem $FASTA)
-    bwa_mem2_sam=$(run_bwa_mem2 $FASTA)
+    #bwa_mem2_sam=$(run_bwa_mem2 $FASTA)
     bowtie_sam=$(run_bowtie $FASTA)
-    bowtie2_sam=$(run_bowtie2 $FASTA)
-    bbmap_sam=$(run_bbmap $FASTA)
+    #bowtie2_sam=$(run_bowtie2 $FASTA)
+    #bbmap_sam=$(run_bbmap $FASTA)
     # shrimp_sam=$(run_shrimp $FASTA)
 
 
     # # # Sort alignments
     bwa_mem_sorted_bam=$(sort_alignment $bwa_mem_sam)
-    bwa_mem2_sorted_bam=$(sort_alignment $bwa_mem2_sam)
+    #bwa_mem2_sorted_bam=$(sort_alignment $bwa_mem2_sam)
     bowtie_sorted_bam=$(sort_alignment $bowtie_sam)
-    bowtie2_sorted_bam=$(sort_alignment $bowtie2_sam)
-    bbmap_sorted_bam=$(sort_alignment $bbmap_sam)
+    #bowtie2_sorted_bam=$(sort_alignment $bowtie2_sam)
+    #bbmap_sorted_bam=$(sort_alignment $bbmap_sam)
     # shrimp_sorted_bam=$(sort_alignment $shrimp_sam)
 
 
     # Evaluate alignments
     evaluate_alignment $bwa_mem_sorted_bam $GTF
-    evaluate_alignment $bwa_mem2_sorted_bam $GTF
+    #evaluate_alignment $bwa_mem2_sorted_bam $GTF
     evaluate_alignment $bowtie_sorted_bam $GTF
-    evaluate_alignment $bowtie2_sorted_bam $GTF
-    evaluate_alignment $bbmap_sorted_bam $GTF
+    #evaluate_alignment $bowtie2_sorted_bam $GTF
+    #evaluate_alignment $bbmap_sorted_bam $GTF
     #evaluate_alignment $shrimp_sorted_bam $GTF
 
     # Cleanup
@@ -526,13 +526,13 @@ export -f main_routine
 export -f make_project_directory
 export -f generate_reads
 # Build index
-#export -f run_bwa_mem_index
+export -f run_bwa_mem_index
 export -f run_bwa_mem2_index
 export -f run_bowtie_build
 export -f run_bowtie2_build
 export -f run_bbmap_index
 # Aligners
-#export -f run_bwa_mem
+export -f run_bwa_mem
 export -f run_bwa_mem2
 export -f run_bowtie
 export -f run_bowtie2
