@@ -48,9 +48,11 @@ export ORIGINAL_WORKDIR=$(pwd)
 ################################
 optparse.define short=n long=n_runs desc="Number of iterations to time each aligner run" variable=n
 optparse.define short=f long=fasta desc="Fasta genome" variable=fasta
-#optparse.define short=i long=fastq desc="Fastq file" variable=fastq
-optparse.define short=p long=parallel desc="Core count for GNU parallel" variable=cores
+optparse.define short=1 long=fastq1 desc="Fastq file, first read in pair" variable=fastq1
+optparse.define short=2 long=fastq2 desc="Fastq file, second read in pair" variable=fastq2
 optparse.define short=g long=gtf desc="GTF file for alignment benchmarking/assessment" variable=gtf
+optparse.define short=p long=parallel desc="Core count for GNU parallel" variable=cores
+
 #optparse.define short=o long=optional desc="Optional argument" variable=optional
 
 
@@ -216,6 +218,11 @@ generate_reads() {
 
 sort_alignment() {
     samfile=$1
+    if [ ! -f $samfile ];
+    then
+	echo "SAM file '$samfile' does not exist on the filesystem..."
+	exit 1
+    fi
 
     echo 1>&2
     echo 1>&2
@@ -247,6 +254,13 @@ sort_alignment() {
 
 evaluate_alignment() {
     bamfile=$1
+
+    if [ ! -f $bamfile ];
+    then
+	echo "SAM file '$samfile' does not exist on the filesystem..."
+	exit 1
+    fi
+    
     #gtf=$2
     echo "==============================================" 1>&2
     echo 1>&2
@@ -336,11 +350,23 @@ run_bbmap_index() {
 #####################################
 run_bwa_mem() {
     fasta=$1
+    fastq1=$2
+    fastq2=$3
     base_filename="${fasta%.*}"
     output_bam="${base_filename}.bwa.sam"
 
+    echo 1>&2
+    echo 1>&2
+    echo "Running bwa-mem on '$fasta' with '$fastq1' and '$fastq2' into '$output_bam'..." 1>&2
+    echo 1>&2
+    echo 1>&2
     
-    /usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa mem -u -o $output_bam $base_filename ${base_filename}_1.fq ${base_filename}_2.fq
+    if [ ! -f $fastq2 ];
+    then
+	/usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa mem -u -o $output_bam $base_filename $fastq1
+    else
+	/usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa mem -u -o $output_bam $base_filename $fastq1 $fastq2
+    fi
     echo 1>&2
     echo 1>&2
     echo "Completed running bwa..." 1>&2
@@ -353,10 +379,24 @@ run_bwa_mem() {
 
 run_bwa_mem2() {
     fasta=$1
+    fastq1=$2
+    fastq2=$3
+    
     base_filename="${fasta%.*}"
     output_bam="${base_filename}.bwa2.sam"
-    
-    /usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa-mem2 mem -o $output_bam $base_filename ${base_filename}_1.fq ${base_filename}_2.fq
+
+    echo 1>&2
+    echo 1>&2
+    echo "Running bwa-mem2 on '$fasta' with '$fastq1' and '$fastq2' into '$output_bam'..." 1>&2
+    echo 1>&2
+    echo 1>&2
+
+    if [ ! -f $fastq2 ];
+    then
+	/usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa-mem2 mem -o $output_bam $base_filename $fastq1
+    else
+	/usr/bin/time -a -o bwa_timed.tsv -f "%x\t%e" bwa-mem2 mem -o $output_bam $base_filename $fastq1 $fastq2
+    fi
     echo 1>&2
     echo 1>&2
     echo "Completed running bwa2..." 1>&2
@@ -370,11 +410,27 @@ run_bwa_mem2() {
 
 run_bowtie() {
     fasta=$1
+    fastq1=$2
+    fastq2=$3
+
+    
     base_filename="${fasta%.*}"
     output_bam="${base_filename}.bowtie.sam"
-    
-    # Generate alignment
-    /usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S $output_bam
+
+    echo 1>&2
+    echo 1>&2
+    echo "Running bowtie on '$fasta' with '$fastq1' and '$fastq2' into '$output_bam'..." 1>&2
+    echo 1>&2
+    echo 1>&2
+
+    if [ ! -f $fastq2 ];
+    then
+
+	# Generate alignment
+	/usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie $base_filename -U $fastq1 -S $output_bam
+    else
+	/usr/bin/time -a -o bowtie_timed.tsv -f "%x\t%e" bowtie $base_filename -1 $fastq1 -2 $fastq2 -S $output_bam
+    fi
     echo 1>&2
     echo 1>&2
     echo "Completed running bowtie..." 1>&2
@@ -386,11 +442,28 @@ run_bowtie() {
 
 run_bowtie2() {
     fasta=$1
+    fastq1=$2
+    fastq2=$3
+
+
     base_filename="${fasta%.*}"
     output_bam="${base_filename}.bowtie2.sam"
 
-    # Run bowtie2
-    /usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 $cores -x $base_filename -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq -S $output_bam
+    echo 1>&2
+    echo 1>&2
+    echo "Running bowtie2 on '$fasta' into '$output_bam'..." 1>&2
+    echo 1>&2
+    echo 1>&2
+
+    
+    if [ ! -f $fastq2 ];
+    then
+	# Run bowtie2
+	/usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 $cores -x $base_filename -1 $fastq1 -S $output_bam
+    else
+	/usr/bin/time -a -o bowtie2_timed.tsv -f "%x\t%e" bowtie2 $cores -x $base_filename -1 $fastq1 -2 $fastq2 -S $output_bam
+    fi
+    
     echo 1>&2
     echo 1>&2
     echo "Completed running bowtie2..." 1>&2
@@ -402,13 +475,29 @@ run_bowtie2() {
 
 run_bbmap() {
     fasta=$1
+    fastq1=$2
+    fastq2=$3
+
+
     base_filename="${fasta%.*}"
-
-
     output_bam="${base_filename}.bbmap.sam"
+
     
-    # Generate alignment
-    /usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh ref=$fasta in=${base_filename}_1.fq in2=${base_filename}_2.fq out=$output_bam
+    echo 1>&2
+    echo 1>&2
+    echo "Running bbmap on '$fasta' with '$fastq1' and '$fastq2' into '$output_bam'..." 1>&2
+    echo 1>&2
+    echo 1>&2
+
+    
+    if [ ! -f $fastq2 ];
+    then
+	# Generate alignment
+	/usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh ref=$fasta in=$fastq1 out=$output_bam
+    else
+	/usr/bin/time -a -o bbmap_timed.tsv -f "%x\t%e" bbmap.sh ref=$fasta in=$fastq1 in2=$fastq2 out=$output_bam
+    fi
+    
     echo 1>&2
     echo 1>&2
     echo "Completed running bbmap..." 1>&2
@@ -422,12 +511,28 @@ run_bbmap() {
 
 run_shrimp() {
     fasta=$1
-    base_filename="${fasta%.*}"
+    fastq1=$2
+    fastq2=$3
 
-    output_bam="${base_filename}.shrimp.sam"
     
-    # Generate alignment
-    /usr/bin/time -a -o shrimp_timed.tsv -f "%x\t%e" gmapper -1 ${base_filename}_1.fq -2 ${base_filename}_2.fq $fasta > $output_bam
+    base_filename="${fasta%.*}"
+    output_bam="${base_filename}.shrimp.sam"
+
+    echo 1>&2
+    echo 1>&2
+    echo "Running SHRiMP on '$fasta' into '$output_bam'..." 1>&2
+    echo 1>&2
+    echo 1>&2
+
+    if [ ! -f $fastq2 ];
+    then
+	
+	# Generate alignment
+	/usr/bin/time -a -o shrimp_timed.tsv -f "%x\t%e" gmapper -1 $fastq1 -2 $fastq2 $fasta > $output_bam
+    else
+	/usr/bin/time -a -o shrimp_timed.tsv -f "%x\t%e" gmapper -1 $fastq1 $fasta > $output_bam
+    fi
+    
     echo 1>&2
     echo 1>&2
     echo "Completed running SHRiMP..." 1>&2
@@ -475,7 +580,7 @@ main_routine() {
     # exit 1
     
     # # Generate reads at 50x fold coverage, 150bp read length, 200bp insert size
-    generate_reads $FASTA
+    # generate_reads $FASTA
     # # Index
     run_bwa_index $FASTA # Not working properly
     run_bwa_mem2_index $FASTA
@@ -486,20 +591,20 @@ main_routine() {
 
 
     # # Programs
-    bwa_mem_sam=$(run_bwa_mem $FASTA)
-    bwa_mem2_sam=$(run_bwa_mem2 $FASTA)
-    bowtie_sam=$(run_bowtie $FASTA)
-    bowtie2_sam=$(run_bowtie2 $FASTA)
-    bbmap_sam=$(run_bbmap $FASTA)
-    # shrimp_sam=$(run_shrimp $FASTA)
+    bwa_mem_sam=$(run_bwa_mem $FASTA $fastq1 $fastq2)
+    bwa_mem2_sam=$(run_bwa_mem2 $FASTA $fastq1 $fastq2)
+    bowtie_sam=$(run_bowtie $FASTA $fastq1 $fastq2)
+    bowtie2_sam=$(run_bowtie2 $FASTA $fastq1 $fastq2)
+    bbmap_sam=$(run_bbmap $FASTA $fastq1 $fastq2)
+    # shrimp_sam=$(run_shrimp $FASTA $fastq1 $fastq2)
 
 
     # # # Sort alignments
     bwa_mem_sorted_bam=$(sort_alignment $bwa_mem_sam)
-    #bwa_mem2_sorted_bam=$(sort_alignment $bwa_mem2_sam)
+    bwa_mem2_sorted_bam=$(sort_alignment $bwa_mem2_sam)
     bowtie_sorted_bam=$(sort_alignment $bowtie_sam)
-    #bowtie2_sorted_bam=$(sort_alignment $bowtie2_sam)
-    #bbmap_sorted_bam=$(sort_alignment $bbmap_sam)
+    bowtie2_sorted_bam=$(sort_alignment $bowtie2_sam)
+    bbmap_sorted_bam=$(sort_alignment $bbmap_sam)
     # shrimp_sorted_bam=$(sort_alignment $shrimp_sam)
 
 
